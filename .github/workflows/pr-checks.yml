@@ -1,0 +1,91 @@
+name: PR Checks
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runs on every pull request targeting main.
+# Gate: all jobs must pass before a PR can be merged.
+#
+# Jobs:
+#   1. unit-tests    - pytest unit tests with coverage report
+#   2. contract-tests - Pact provider verification (SCADA-Ignition contract)
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "tests/**"
+      - "requirements.txt"
+      - ".github/workflows/pr-checks.yml"
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Unit Tests ─────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            -v
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # ── 3. Contract Tests ─────────────────────────────────────────────────────────
+  contract-tests:
+    name: Contract Tests (Pact - SCADA-Ignition)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Pact provider verification
+        run: |
+          echo "──────────────────────────────────────────────────────────"
+          echo "  Consumer : SCADA-Ignition"
+          echo "  Provider : WellMonitoringService"
+          echo "  Pact     : tests/contract/pacts/scada-ignition-wellmonitoringservice.json"
+          echo "──────────────────────────────────────────────────────────"
+          pytest tests/contract/ -v --tb=short
+
+      - name: Upload pact verification results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-verification-results
+          path: tests/contract/pacts/

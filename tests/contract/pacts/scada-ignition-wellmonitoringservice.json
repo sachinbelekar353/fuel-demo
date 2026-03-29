@@ -1,0 +1,203 @@
+{
+  "consumer": {
+    "name": "SCADA-Ignition"
+  },
+  "provider": {
+    "name": "WellMonitoringService"
+  },
+  "interactions": [
+    {
+      "description": "a request for all active wells",
+      "providerState": "active wells exist in the Permian Basin",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/wells",
+        "query": "status=active",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": "WELL-001",
+            "name": "Permian Alpha-1",
+            "field": "Permian Basin",
+            "status": "active",
+            "api_number": "42-317-20130",
+            "depth_ft": 9450.0
+          }
+        ],
+        "matchingRules": {
+          "$.body": { "min": 1 },
+          "$.body[*].id": { "match": "type" },
+          "$.body[*].name": { "match": "type" },
+          "$.body[*].status": { "match": "type" },
+          "$.body[*].api_number": { "match": "type" },
+          "$.body[*].depth_ft": { "match": "type" }
+        }
+      }
+    },
+    {
+      "description": "a request for the latest sensor reading of a well",
+      "providerState": "WELL-001 has sensor readings",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/wells/WELL-001/readings/latest",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "well_id": "WELL-001",
+          "timestamp": "2026-03-29T06:00:00",
+          "wellhead_pressure_psi": 2340.5,
+          "casing_pressure_psi": 1850.0,
+          "tubing_pressure_psi": 2100.3,
+          "flow_rate_bopd": 412.7,
+          "gas_oil_ratio": 850.0,
+          "water_cut_pct": 12.4,
+          "temperature_f": 148.2,
+          "choke_size_64th": 24
+        },
+        "matchingRules": {
+          "$.body.well_id": { "match": "type" },
+          "$.body.timestamp": { "match": "type" },
+          "$.body.wellhead_pressure_psi": { "match": "type" },
+          "$.body.flow_rate_bopd": { "match": "type" },
+          "$.body.gas_oil_ratio": { "match": "type" },
+          "$.body.water_cut_pct": { "match": "type" },
+          "$.body.temperature_f": { "match": "type" },
+          "$.body.choke_size_64th": { "match": "type" }
+        }
+      }
+    },
+    {
+      "description": "Ignition pushes a new sensor reading",
+      "providerState": "WELL-001 exists and is active",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/wells/WELL-001/readings",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "wellhead_pressure_psi": 2350.0,
+          "casing_pressure_psi": 1860.0,
+          "tubing_pressure_psi": 2110.0,
+          "flow_rate_bopd": 415.0,
+          "gas_oil_ratio": 855.0,
+          "water_cut_pct": 12.5,
+          "temperature_f": 149.0,
+          "choke_size_64th": 24
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "well_id": "WELL-001",
+          "wellhead_pressure_psi": 2350.0,
+          "flow_rate_bopd": 415.0
+        },
+        "matchingRules": {
+          "$.body.well_id": { "match": "type" },
+          "$.body.timestamp": { "match": "type" },
+          "$.body.wellhead_pressure_psi": { "match": "type" }
+        }
+      }
+    },
+    {
+      "description": "Ignition triggers a high-pressure alarm",
+      "providerState": "WELL-001 exists and is active",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/wells/WELL-001/alarms",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "severity": "high",
+          "scada_tag": "[PermianBasin]WELL-001/WellheadPressure",
+          "description": "Wellhead pressure exceeded high-high setpoint",
+          "setpoint": 4500.0,
+          "actual_value": 4820.0,
+          "unit": "PSI"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "well_id": "WELL-001",
+          "severity": "high",
+          "status": "active",
+          "scada_tag": "[PermianBasin]WELL-001/WellheadPressure"
+        },
+        "matchingRules": {
+          "$.body.id": { "match": "type" },
+          "$.body.well_id": { "match": "type" },
+          "$.body.timestamp": { "match": "type" },
+          "$.body.severity": { "match": "type" },
+          "$.body.status": { "match": "regex", "regex": "active|acknowledged|resolved" }
+        }
+      }
+    },
+    {
+      "description": "a request for active alarms on a well",
+      "providerState": "WELL-004 has an active high-pressure alarm",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/wells/WELL-004/alarms",
+        "query": "status=active",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": "ALM-20260329-001",
+            "well_id": "WELL-004",
+            "severity": "high",
+            "status": "active",
+            "scada_tag": "[WillistonBasin]WELL-004/WellheadPressure",
+            "setpoint": 4500.0,
+            "actual_value": 4820.0,
+            "unit": "PSI"
+          }
+        ],
+        "matchingRules": {
+          "$.body[*].id": { "match": "type" },
+          "$.body[*].well_id": { "match": "type" },
+          "$.body[*].severity": { "match": "type" },
+          "$.body[*].status": { "match": "type" },
+          "$.body[*].scada_tag": { "match": "type" }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "2.0.0"
+    },
+    "createdAt": "2026-03-29T00:00:00"
+  }
+}
