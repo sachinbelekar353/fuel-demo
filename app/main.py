@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import wells, readings, alarms
+from app.routers import wells, readings, alarms, summary
 from app.models import HealthResponse
 
 app = FastAPI(
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(wells.router)
 app.include_router(readings.router)
 app.include_router(alarms.router)
+app.include_router(summary.router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
